@@ -1,0 +1,5 @@
+id: config_audit
+name: Agent 配置安全审计
+type: detector
+requires: []
+description: Wraps ecc-agentshield to audit .cursor/, .claude/, hooks, and MCP configuration.

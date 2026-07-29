@@ -1,0 +1,30 @@
+rules:
+  - id: python.hardcoded-secret
+    languages: [python]
+    message: Possible hardcoded secret or API key
+    severity: ERROR
+    patterns:
+      - pattern-regex: (?i)(api[_-]?key|secret|password|token)\s*=\s*['"][^'"]{8,}['"]
+    metadata:
+      category: secret-management
+      cwe: "CWE-798"
+
+  - id: python.subprocess-shell-true
+    languages: [python]
+    message: subprocess invoked with shell=True
+    severity: ERROR
+    pattern: subprocess.$FUNC(..., shell=True, ...)
+    metadata:
+      category: command-injection
+      cwe: "CWE-78"
+
+  - id: python.pickle-load
+    languages: [python]
+    message: Unsafe pickle deserialization
+    severity: WARNING
+    pattern-either:
+      - pattern: pickle.load(...)
+      - pattern: pickle.loads(...)
+    metadata:
+      category: deserialization
+      cwe: "CWE-502"

@@ -1,0 +1,21 @@
+must_match_any:
+  - code security
+  - vulnerability
+  - SAST
+  - LLM
+  - agent
+  - prompt injection
+  - Semgrep
+  - static analysis
+  - AI application
+boost:
+  - defending code
+  - harness
+  - verification
+  - triage
+  - threat model
+min_score: 6
+keyword_weight: 1.5
+recency_days: 14
+recency_bonus: 2.0
+seen_penalty: 1.0

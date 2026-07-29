@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Code Auditor</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #f8fafc; --card: #fff; --border: #e2e8f0; --text: #0f172a;
+      --muted: #64748b; --primary: #2563eb; --critical: #dc2626; --high: #ea580c;
+      --medium: #ca8a04; --low: #16a34a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Inter, system-ui, sans-serif; background: var(--bg); color: var(--text); }
+    .layout { display: flex; min-height: 100vh; }
+    .sidebar { width: 240px; background: var(--card); border-right: 1px solid var(--border); padding: 1rem; position: fixed; height: 100vh; }
+    .sidebar h1 { font-size: 1.1rem; margin-bottom: 1rem; }
+    .nav button { display: block; width: 100%; text-align: left; padding: .6rem .8rem; margin-bottom: .25rem; border: none; background: transparent; cursor: pointer; border-radius: .5rem; }
+    .nav button.active, .nav button:hover { background: #eff6ff; color: var(--primary); }
+    .main { margin-left: 240px; flex: 1; padding: 1.5rem; }
+    .page { display: none; }
+    .page.active { display: block; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: .75rem; padding: 1rem; }
+    .card h3 { font-size: .85rem; color: var(--muted); }
+    .card .value { font-size: 1.6rem; font-weight: 700; margin-top: .25rem; }
+    table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--border); border-radius: .75rem; overflow: hidden; }
+    th, td { padding: .75rem; border-bottom: 1px solid var(--border); text-align: left; font-size: .9rem; }
+    th { background: #f1f5f9; }
+    .badge { display: inline-block; padding: .15rem .5rem; border-radius: 999px; font-size: .75rem; color: #fff; }
+    .badge.critical { background: var(--critical); }
+    .badge.high { background: var(--high); }
+    .badge.medium { background: var(--medium); }
+    .badge.low { background: var(--low); }
+    .badge.info { background: var(--muted); }
+    .toolbar { display: flex; gap: .5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    input, select, button.btn { padding: .5rem .75rem; border: 1px solid var(--border); border-radius: .5rem; background: #fff; }
+    button.btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); cursor: pointer; }
+    .log { background: #0f172a; color: #e2e8f0; padding: 1rem; border-radius: .5rem; height: 200px; overflow: auto; font-family: monospace; font-size: .8rem; }
+    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); align-items: center; justify-content: center; z-index: 50; }
+    .modal.open { display: flex; }
+    .modal-body { background: #fff; width: min(720px, 92vw); max-height: 85vh; overflow: auto; border-radius: .75rem; padding: 1.25rem; }
+    pre.evidence { background: #f1f5f9; padding: .75rem; border-radius: .5rem; overflow: auto; white-space: pre-wrap; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 900px) { .sidebar { position: static; width: 100%; height: auto; } .main { margin-left: 0; } .grid-2 { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <h1>AI Code Auditor</h1>
+    <nav class="nav">
+      <button class="active" data-page="dashboard">概览 Dashboard</button>
+      <button data-page="scans">扫描 Scans</button>
+      <button data-page="findings">发现 Findings</button>
+      <button data-page="rules">规则 Rules</button>
+      <button data-page="projects">项目 Projects</button>
+      <button data-page="settings">设置 Settings</button>
+    </nav>
+  </aside>
+  <main class="main">
+    <section id="dashboard" class="page active">
+      <h2>技术雷达</h2>
+      <div id="radar-list" class="card" style="margin:1rem 0"></div>
+      <div class="cards" id="kpi-cards"></div>
+      <div class="grid-2">
+        <div class="card"><canvas id="severity-chart"></canvas></div>
+        <div class="card"><h3>最近发现</h3><div id="recent-findings"></div></div>
+      </div>
+    </section>
+    <section id="scans" class="page">
+      <h2>扫描</h2>
+      <div class="toolbar">
+        <select id="scan-project"></select>
+        <select id="scan-mode"><option value="quick">quick</option><option value="deep">deep</option></select>
+        <button class="btn primary" id="start-scan">发起扫描</button>
+      </div>
+      <div class="card"><div>进度: <span id="scan-progress">0%</span></div><div class="log" id="scan-log"></div></div>
+    </section>
+    <section id="findings" class="page">
+      <h2>发现</h2>
+      <div class="toolbar">
+        <select id="filter-severity"><option value="">全部严重度</option><option>critical</option><option>high</option><option>medium</option><option>low</option></select>
+        <button class="btn" id="reload-findings">刷新</button>
+      </div>
+      <table><thead><tr><th>严重度</th><th>规则</th><th>文件</th><th>状态</th><th></th></tr></thead><tbody id="findings-body"></tbody></table>
+    </section>
+    <section id="rules" class="page">
+      <h2>规则</h2>
+      <button class="btn" id="reload-rules">重载规则</button>
+      <div id="rules-list" class="card" style="margin-top:1rem"></div>
+    </section>
+    <section id="projects" class="page">
+      <h2>项目</h2>
+      <div class="card">
+        <h3>注册项目</h3>
+        <div class="toolbar">
+          <input id="proj-id" placeholder="id">
+          <input id="proj-name" placeholder="name">
+          <input id="proj-path" placeholder="path" style="min-width:240px">
+          <button class="btn primary" id="create-project">创建</button>
+        </div>
+      </div>
+      <table style="margin-top:1rem"><thead><tr><th>ID</th><th>名称</th><th>路径</th></tr></thead><tbody id="projects-body"></tbody></table>
+    </section>
+    <section id="settings" class="page">
+      <h2>设置</h2>
+      <div class="card">
+        <p>Provider: <strong id="llm-provider">-</strong></p>
+        <p>DeepSeek Key: <strong id="deepseek-key-status">-</strong></p>
+        <p>API Key（当前）: <strong id="api-key-status">-</strong></p>
+        <div class="toolbar">
+          <select id="setting-screening"></select>
+          <select id="setting-verify"></select>
+          <select id="setting-report"><option value="report_only">ReportOnly</option><option value="block">Block</option></select>
+          <button class="btn primary" id="save-settings">保存</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+<div class="modal" id="finding-modal"><div class="modal-body">
+  <h3 id="modal-title"></h3>
+  <p id="modal-meta"></p>
+  <pre class="evidence" id="modal-evidence"></pre>
+  <p id="modal-cwe"></p>
+  <p id="modal-remediation"></p>
+  <div class="toolbar">
+    <button class="btn" data-status="confirmed">确认</button>
+    <button class="btn" data-status="false_positive">误报</button>
+    <button class="btn" data-status="suppressed">抑制</button>
+    <button class="btn" id="close-modal">关闭</button>
+  </div>
+</div></div>
+<script>
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s ?? '';
+  return d.innerHTML;
+}
+function badge(sev) {
+  return `<span class="badge ${escapeHtml(sev)}">${escapeHtml(sev)}</span>`;
+}
+async function api(path, opts = {}) {
+  const res = await fetch(path, { headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) }, ...opts });
+  const body = await res.json();
+  if (!body.success) throw new Error(body.error || 'API error');
+  return body.data;
+}
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById(name).classList.add('active');
+  document.querySelector(`[data-page="${name}"]`).classList.add('active');
+}
+document.querySelectorAll('.nav button').forEach(btn => btn.addEventListener('click', () => {
+  showPage(btn.dataset.page);
+  if (btn.dataset.page === 'findings') loadFindings();
+  if (btn.dataset.page === 'rules') loadRules();
+  if (btn.dataset.page === 'projects') loadProjects();
+  if (btn.dataset.page === 'settings') loadSettings();
+}));
+let chart;
+async function loadDashboard() {
+  const feed = await api('/api/knowledge/feed?limit=8');
+  document.getElementById('radar-list').innerHTML = feed.map(item =>
+    `<div style="margin:.5rem 0"><a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer">[${item.score.toFixed(1)}] ${escapeHtml(item.title)}</a><div style="color:var(--muted);font-size:.8rem">${escapeHtml(item.source)}</div></div>`
+  ).join('') || '<p>暂无雷达条目</p>';
+  const stats = await api('/api/stats');
+  const counts = stats.severity_counts || {};
+  document.getElementById('kpi-cards').innerHTML = ['critical','high','medium','low'].map(k =>
+    `<div class="card"><h3>${k}</h3><div class="value">${counts[k] || 0}</div></div>`
+  ).join('') + `<div class="card"><h3>今日扫描</h3><div class="value">${stats.scans_today || 0}</div></div>`;
+  const ctx = document.getElementById('severity-chart');
+  if (chart) chart.destroy();
+  chart = new Chart(ctx, { type: 'doughnut', data: { labels: Object.keys(counts), datasets: [{ data: Object.values(counts), backgroundColor: ['#dc2626','#ea580c','#ca8a04','#16a34a','#64748b'] }] }, options: { plugins: { legend: { position: 'bottom' } } } });
+  const findings = await api('/api/findings?limit=8');
+  document.getElementById('recent-findings').innerHTML = `<table><tr><th>严重度</th><th>规则</th><th>文件</th></tr>${findings.map(f => `<tr><td>${badge(f.severity)}</td><td>${escapeHtml(f.rule_id)}</td><td>${escapeHtml(f.file)}:${f.line}</td></tr>`).join('')}</table>`;
+}
+async function loadProjects() {
+  const projects = await api('/api/projects');
+  document.getElementById('projects-body').innerHTML = projects.map(p => `<tr><td>${escapeHtml(p.id)}</td><td>${escapeHtml(p.name)}</td><td>${escapeHtml(p.path)}</td></tr>`).join('');
+  const sel = document.getElementById('scan-project');
+  sel.innerHTML = projects.map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`).join('');
+}
+document.getElementById('create-project').onclick = async () => {
+  await api('/api/projects', { method: 'POST', body: JSON.stringify({ id: document.getElementById('proj-id').value, name: document.getElementById('proj-name').value, path: document.getElementById('proj-path').value, languages: [] }) });
+  loadProjects();
+};
+let currentFindingId = null;
+async function loadFindings() {
+  const sev = document.getElementById('filter-severity').value;
+  const q = sev ? `?severity=${encodeURIComponent(sev)}` : '';
+  const findings = await api('/api/findings' + q);
+  document.getElementById('findings-body').innerHTML = findings.map(f => `<tr><td>${badge(f.severity)}</td><td>${escapeHtml(f.rule_id)}</td><td>${escapeHtml(f.file)}:${f.line}</td><td>${escapeHtml(f.status)}</td><td><button class="btn" data-id="${escapeHtml(f.id)}">详情</button></td></tr>`).join('');
+  document.querySelectorAll('#findings-body button[data-id]').forEach(btn => btn.onclick = () => openFinding(btn.dataset.id, findings.find(x => x.id === btn.dataset.id)));
+}
+function openFinding(id, f) {
+  currentFindingId = id;
+  document.getElementById('modal-title').textContent = f.rule_id;
+  document.getElementById('modal-meta').textContent = `${f.severity} | ${f.file}:${f.line} | ${f.message}`;
+  document.getElementById('modal-evidence').textContent = f.evidence || f.message;
+  document.getElementById('modal-cwe').textContent = f.cwe ? `CWE: ${f.cwe}` : '';
+  document.getElementById('modal-remediation').textContent = f.remediation || '';
+  document.getElementById('finding-modal').classList.add('open');
+}
+document.querySelectorAll('[data-status]').forEach(btn => btn.onclick = async () => {
+  if (!currentFindingId) return;
+  await api(`/api/findings/${currentFindingId}`, { method: 'PATCH', body: JSON.stringify({ status: btn.dataset.status }) });
+  document.getElementById('finding-modal').classList.remove('open');
+  loadFindings();
+});
+document.getElementById('close-modal').onclick = () => document.getElementById('finding-modal').classList.remove('open');
+document.getElementById('reload-findings').onclick = loadFindings;
+async function loadRules() {
+  const rules = await api('/api/rules');
+  document.getElementById('rules-list').innerHTML = `<p>Detectors: ${rules.detectors.map(escapeHtml).join(', ')}</p><ul>${rules.rule_sets.map(r => `<li>${escapeHtml(r.id)}</li>`).join('')}</ul>`;
+}
+document.getElementById('reload-rules').onclick = async () => { await api('/api/rules/reload', { method: 'POST' }); loadRules(); };
+async function loadSettings() {
+  const s = await api('/api/settings');
+  document.getElementById('llm-provider').textContent = s.llm_provider || 'deepseek';
+  document.getElementById('deepseek-key-status').textContent = s.deepseek_api_key_configured ? '已配置' : '未配置';
+  document.getElementById('api-key-status').textContent = s.api_key_configured ? '已配置' : '未配置';
+  document.getElementById('setting-screening').innerHTML = `<option>${escapeHtml(s.screening_model)}</option>`;
+  document.getElementById('setting-verify').innerHTML = `<option>${escapeHtml(s.verify_model)}</option>`;
+  document.getElementById('setting-report').value = s.report_mode;
+}
+document.getElementById('save-settings').onclick = async () => {
+  await api('/api/settings', { method: 'PATCH', body: JSON.stringify({ report_mode: document.getElementById('setting-report').value }) });
+};
+let ws;
+document.getElementById('start-scan').onclick = async () => {
+  const project_id = document.getElementById('scan-project').value;
+  const mode = document.getElementById('scan-mode').value;
+  const scan = await api('/api/scans', { method: 'POST', body: JSON.stringify({ project_id, mode }) });
+  const log = document.getElementById('scan-log');
+  log.textContent = '';
+  if (ws) ws.close();
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/api/scans/${scan.id}/stream`);
+  ws.onmessage = (ev) => {
+    const data = JSON.parse(ev.data);
+    log.textContent += `[${data.stage}] ${data.message}\n`;
+    document.getElementById('scan-progress').textContent = `${Math.round((data.progress || 0) * 100)}%`;
+    log.scrollTop = log.scrollHeight;
+  };
+};
+loadDashboard();
+loadProjects();
+loadSettings();
+</script>
+</body>
+</html>

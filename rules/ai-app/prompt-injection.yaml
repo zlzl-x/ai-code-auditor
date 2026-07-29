@@ -1,0 +1,27 @@
+rules:
+  - id: ai-app.prompt-injection-concat
+    languages: [python, javascript, typescript]
+    message: User input concatenated into prompt without sanitization
+    severity: WARNING
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $PROMPT = "... " + $USER + " ..."
+          - pattern: |
+              $PROMPT = `...${$USER}...`
+          - pattern: |
+              f"...{$USER}..."
+    metadata:
+      category: prompt-injection
+      cwe: "CWE-74"
+
+  - id: ai-app.dangerous-eval
+    languages: [python, javascript, typescript]
+    message: Dangerous eval/exec with potentially untrusted input
+    severity: ERROR
+    pattern-either:
+      - pattern: eval($X)
+      - pattern: exec($X)
+    metadata:
+      category: code-injection
+      cwe: "CWE-94"

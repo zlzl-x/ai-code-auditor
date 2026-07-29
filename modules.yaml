@@ -1,0 +1,26 @@
+detectors:
+  - semgrep
+  - bandit
+  - gitleaks
+  - npm_audit
+  - eslint_security
+  - config_audit
+pipeline:
+  - recon
+  - find_rules
+  - find_llm
+  - verify_llm
+  - triage
+  - report_md
+reporters:
+  - markdown
+llm:
+  provider: deepseek
+  screening_provider: deepseek
+  verify_provider: deepseek
+  translate_provider: deepseek
+  screening_model: deepseek-v4-pro
+  verify_model: deepseek-v4-pro
+  translate_model: deepseek-v4-flash
+  confidence_threshold: 0.8
+  max_findings_per_scan: 20

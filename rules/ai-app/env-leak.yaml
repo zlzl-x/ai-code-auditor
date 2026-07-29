@@ -1,0 +1,22 @@
+rules:
+  - id: ai-app.mcp-tool-overreach
+    languages: [python, javascript, typescript, yaml]
+    message: MCP or tool invocation without explicit scope boundary
+    severity: WARNING
+    pattern-either:
+      - pattern: mcp.$TOOL(...)
+      - pattern: CallMcpTool(...)
+    metadata:
+      category: tool-overreach
+      cwe: "CWE-284"
+
+  - id: ai-app.env-secret-log
+    languages: [python, javascript, typescript]
+    message: Environment secret may be logged or exposed
+    severity: WARNING
+    pattern-either:
+      - pattern: print(os.environ[$KEY])
+      - pattern: console.log(process.env[$KEY])
+    metadata:
+      category: secret-exposure
+      cwe: "CWE-532"

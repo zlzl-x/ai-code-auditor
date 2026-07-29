@@ -1,0 +1,22 @@
+rules:
+  - id: ai-app.unrestricted-shell
+    languages: [python, javascript, typescript]
+    message: Shell command execution may allow tool overreach
+    severity: WARNING
+    patterns:
+      - pattern-either:
+          - pattern: subprocess.run(..., shell=True, ...)
+          - pattern: child_process.exec($CMD, ...)
+          - pattern: child_process.execSync($CMD, ...)
+    metadata:
+      category: tool-overreach
+      cwe: "CWE-78"
+
+  - id: ai-app.mcp-no-auth
+    languages: [python, typescript, javascript]
+    message: MCP or tool server call without explicit auth check
+    severity: INFO
+    patterns:
+      - pattern-regex: '(?i)(mcp|tool).*(call|invoke|execute).*(?!auth|token|permission)'
+    metadata:
+      category: tool-overreach

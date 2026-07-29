@@ -1,0 +1,20 @@
+name: novel-assistant-v3
+path: G:/小说创作助手-v3
+languages: [typescript, javascript]
+exclude:
+  - "**/node_modules/**"
+  - "**/dist/**"
+  - "**/.git/**"
+  - "**/pnpm-lock.yaml"
+  - "**/.env"
+scan_mode: quick
+fail_on: critical
+focus_areas:
+  - path: apps/desktop/src/main/services/
+    description: "LLM 客户端与 API Key 存储"
+  - path: apps/desktop/src/main/ipc/
+    description: "Electron IPC 入口"
+  - path: apps/desktop/scripts/
+    description: "构建脚本（含 native rebuild）"
+  - path: packages/core/src/
+    description: "核心业务逻辑与导入解析"

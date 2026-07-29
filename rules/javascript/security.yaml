@@ -1,0 +1,28 @@
+rules:
+  - id: javascript.innerhtml-assignment
+    languages: [javascript, typescript]
+    message: Potential XSS via innerHTML assignment
+    severity: WARNING
+    pattern: $EL.innerHTML = $X
+    metadata:
+      category: xss
+      cwe: "CWE-79"
+
+  - id: javascript.dangerous-eval
+    languages: [javascript, typescript]
+    message: eval() with potentially untrusted input
+    severity: ERROR
+    pattern: eval($X)
+    metadata:
+      category: code-injection
+      cwe: "CWE-94"
+
+  - id: javascript.hardcoded-secret
+    languages: [javascript, typescript]
+    message: Possible hardcoded secret or API key
+    severity: ERROR
+    patterns:
+      - pattern-regex: (?i)(api[_-]?key|secret|password|token)\s*=\s*['"][^'"]{8,}['"]
+    metadata:
+      category: secret-management
+      cwe: "CWE-798"

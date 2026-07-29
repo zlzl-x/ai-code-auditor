@@ -1,0 +1,62 @@
+# 技术雷达白名单源（阶段 0 草稿，阶段 1 迁移至 backend/knowledge/）
+# 抓取频率：每 6–24 小时；仅白名单源，非全网爬虫
+
+sources:
+  - id: anthropic-news
+    name: Anthropic News
+    type: rss
+    url: https://www.anthropic.com/news/rss
+    category: methodology
+    trust_score: 9
+
+  - id: github-security-blog
+    name: GitHub Security Blog
+    type: rss
+    url: https://github.blog/security/feed/
+    category: blog
+    trust_score: 9
+
+  - id: semgrep-blog
+    name: Semgrep Blog
+    type: rss
+    url: https://semgrep.dev/blog/feed/
+    category: tool
+    trust_score: 8
+
+  - id: trail-of-bits
+    name: Trail of Bits Blog
+    type: rss
+    url: https://blog.trailofbits.com/feed/
+    category: blog
+    trust_score: 9
+
+  - id: owasp-blog
+    name: OWASP Blog
+    type: rss
+    url: https://owasp.org/blog/feed.xml
+    category: blog
+    trust_score: 8
+
+  - id: semgrep-releases
+    name: semgrep/semgrep Releases
+    type: github
+    repo: semgrep/semgrep
+    watch: releases
+    category: tool
+    trust_score: 8
+
+  - id: gitleaks-releases
+    name: gitleaks/gitleaks Releases
+    type: github
+    repo: gitleaks/gitleaks
+    watch: releases
+    category: tool
+    trust_score: 8
+
+  - id: harness-repo
+    name: defending-code-reference-harness
+    type: github
+    repo: anthropic-experimental/defending-code-reference-harness
+    watch: releases
+    category: methodology
+    trust_score: 9
